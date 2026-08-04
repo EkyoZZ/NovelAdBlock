@@ -1,7 +1,7 @@
 ﻿// ==UserScript==
 // @name         NovelAdBlock
 // @namespace    https://github.com/NovelAdBlock
-// @version      0.2.1
+// @version      0.2.2
 // @description  Block novel-site ad redirects, popups, injected scripts and frames.
 // @match        *://*/*
 // @run-at       document-start
@@ -74,6 +74,27 @@
       destination.searchParams.set('_novel_adblock', Date.now().toString(36));
       root.location.assign(destination.href);
     }, true);
+
+    const allowedFrameHosts = ['challenges.cloudflare.com'];
+    const removeThirdPartyFrame = frame => {
+      if (!frame || frame.tagName !== 'IFRAME') return;
+      let source;
+      try { source = new URL(frame.src || 'about:blank', root.location.href); } catch (_) { frame.remove(); return; }
+      if (source.protocol === 'about:' || source.origin === root.location.origin) return;
+      const allowed = allowedFrameHosts.some(host => source.hostname === host || source.hostname.endsWith('.' + host));
+      if (!allowed) frame.remove();
+    };
+
+    const scanFrames = node => {
+      if (!node || node.nodeType !== 1) return;
+      if (node.tagName === 'IFRAME') removeThirdPartyFrame(node);
+      if (node.isConnected) Array.from(node.querySelectorAll('iframe')).forEach(removeThirdPartyFrame);
+    };
+
+    new MutationObserver(records => records.forEach(record => {
+      if (record.type === 'attributes') removeThirdPartyFrame(record.target);
+      record.addedNodes.forEach(scanFrames);
+    })).observe(root.document, { childList: true, subtree: true, attributes: true, attributeFilter: ['src'] });
   }
 
   installPageBootstrap(window);
@@ -101,7 +122,7 @@
 (function (root) {
   'use strict';
   const N = root.NovelAdBlock = root.NovelAdBlock || {};
-  N.version = '0.2.1';
+  N.version = '0.2.2';
   N.rules = N.rules || [];
   N.features = N.features || [];
   N.log = N.log || function () {};
@@ -116,10 +137,12 @@
     if (parsed.origin === location.origin) return false;
     return N.activeRules().some(rule => {
       const allowedScript = (rule.allowedScriptHosts || []).some(host => parsed.hostname === host || parsed.hostname.endsWith('.' + host));
+      const allowedIframe = (rule.allowedIframeHosts || []).some(host => parsed.hostname === host || parsed.hostname.endsWith('.' + host));
       return (rule.blockHosts || []).some(host => parsed.hostname === host || parsed.hostname.endsWith('.' + host)) ||
         (rule.blockPatterns || []).some(pattern => pattern.test(parsed.href)) ||
         (kind === 'popup' && rule.blockThirdPartyPopups) ||
-        (kind === 'script' && rule.blockThirdPartyScripts && !allowedScript);
+        (kind === 'script' && rule.blockThirdPartyScripts && !allowedScript) ||
+        (kind === 'iframe' && rule.blockThirdPartyIframes && !allowedIframe);
     });
   };
   N.guard = function (kind, value, fallback) {
@@ -186,6 +209,8 @@
     blockDocumentWrite: true,
     blockThirdPartyScripts: true,
     allowedScriptHosts: ['libs.baidu.com', 'static.cloudflareinsights.com', 'challenges.cloudflare.com', 'hm.baidu.com'],
+    blockThirdPartyIframes: true,
+    allowedIframeHosts: ['challenges.cloudflare.com'],
     clearSessionStoragePatterns: [/^(?:currentPvIndex_|config_|data_|data\d+)/i],
     blockHosts: ['dkuhw.cn', '3333ai.top', 'bmjtlfhahyhhru.com'],
     blockPatterns: []

@@ -2,7 +2,7 @@
 (function (root) {
   'use strict';
   const N = root.NovelAdBlock = root.NovelAdBlock || {};
-  N.version = '0.2.1';
+  N.version = '0.2.2';
   N.rules = N.rules || [];
   N.features = N.features || [];
   N.log = N.log || function () {};
@@ -17,10 +17,12 @@
     if (parsed.origin === location.origin) return false;
     return N.activeRules().some(rule => {
       const allowedScript = (rule.allowedScriptHosts || []).some(host => parsed.hostname === host || parsed.hostname.endsWith('.' + host));
+      const allowedIframe = (rule.allowedIframeHosts || []).some(host => parsed.hostname === host || parsed.hostname.endsWith('.' + host));
       return (rule.blockHosts || []).some(host => parsed.hostname === host || parsed.hostname.endsWith('.' + host)) ||
         (rule.blockPatterns || []).some(pattern => pattern.test(parsed.href)) ||
         (kind === 'popup' && rule.blockThirdPartyPopups) ||
-        (kind === 'script' && rule.blockThirdPartyScripts && !allowedScript);
+        (kind === 'script' && rule.blockThirdPartyScripts && !allowedScript) ||
+        (kind === 'iframe' && rule.blockThirdPartyIframes && !allowedIframe);
     });
   };
   N.guard = function (kind, value, fallback) {

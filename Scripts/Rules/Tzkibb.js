@@ -9,6 +9,8 @@
     blockDocumentWrite: true,
     blockThirdPartyScripts: true,
     allowedScriptHosts: ['libs.baidu.com', 'static.cloudflareinsights.com', 'challenges.cloudflare.com', 'hm.baidu.com'],
+    blockThirdPartyIframes: true,
+    allowedIframeHosts: ['challenges.cloudflare.com'],
     clearSessionStoragePatterns: [/^(?:currentPvIndex_|config_|data_|data\d+)/i],
     blockHosts: ['dkuhw.cn', '3333ai.top', 'bmjtlfhahyhhru.com'],
     blockPatterns: []

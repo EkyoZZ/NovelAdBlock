@@ -1,4 +1,4 @@
-﻿# NovelAdBlock 小说网站去广告,还原干净的文本阅读
+﻿# NovelAdBlock
 
 [中文](#中文) | [English](#english)
 

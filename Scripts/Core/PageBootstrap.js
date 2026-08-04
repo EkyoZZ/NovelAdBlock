@@ -33,6 +33,37 @@
     ['touchstart', 'touchmove', 'touchend', 'touchcancel'].forEach(type => {
       root.addEventListener(type, stopTouchTracking, { capture: true, passive: true });
     });
+
+    const findChapterLink = event => {
+      const elements = [];
+      if (event.target && event.target.nodeType === 1) elements.push(event.target);
+      if (typeof root.document.elementsFromPoint === 'function') {
+        elements.push.apply(elements, root.document.elementsFromPoint(event.clientX, event.clientY));
+      }
+
+      for (const element of elements) {
+        const link = element.closest && element.closest('a[href]');
+        if (!link) continue;
+        const label = (link.textContent || '').replace(/\s+/g, '');
+        if (/^(?:上一章|下一章|上一页|下一页)$/.test(label)) return link;
+      }
+      return null;
+    };
+
+    root.addEventListener('click', event => {
+      if (event.button > 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+      const link = findChapterLink(event);
+      if (!link) return;
+
+      let destination;
+      try { destination = new URL(link.href, root.location.href); } catch (_) { return; }
+      if (destination.origin !== root.location.origin) return;
+
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      destination.searchParams.set('_novel_adblock', Date.now().toString(36));
+      root.location.assign(destination.href);
+    }, true);
   }
 
   installPageBootstrap(window);

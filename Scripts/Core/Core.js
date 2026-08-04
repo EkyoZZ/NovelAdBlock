@@ -2,7 +2,7 @@
 (function (root) {
   'use strict';
   const N = root.NovelAdBlock = root.NovelAdBlock || {};
-  N.version = '0.1.3';
+  N.version = '0.1.4';
   N.rules = N.rules || [];
   N.features = N.features || [];
   N.log = N.log || function () {};
@@ -41,9 +41,22 @@
       } catch (_) {}
     });
   };
+  N.clearRuleStorage = function () {
+    const patterns = N.activeRules().flatMap(rule => rule.clearSessionStoragePatterns || []);
+    if (!patterns.length) return;
+    try {
+      const keys = [];
+      for (let index = 0; index < sessionStorage.length; index += 1) keys.push(sessionStorage.key(index));
+      keys.filter(key => key && patterns.some(pattern => pattern.test(key))).forEach(key => {
+        sessionStorage.removeItem(key);
+        N.log('CLEAR sessionStorage', key);
+      });
+    } catch (_) {}
+  };
   N.install = function () {
     if (N.installed) return;
     N.installed = true;
+    N.clearRuleStorage();
     N.disableKnownGlobals();
     N.features.forEach(feature => { try { feature(N); } catch (error) { N.log('feature error', error); } });
     N.log('installed', { version: N.version, rules: N.activeRules().map(rule => rule.id) });

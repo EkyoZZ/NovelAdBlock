@@ -2,6 +2,7 @@
   'use strict';
   root.NovelAdBlock.registerFeature(function (N) {
     const lockPatterns = N.activeRules().flatMap(rule => rule.lockGlobalsAfterScripts || []);
+    const blockDocumentWrite = N.activeRules().some(rule => rule.blockDocumentWrite);
     const shouldLockAfter = src => lockPatterns.some(pattern => pattern.test(src));
 
     if (lockPatterns.length) {
@@ -22,6 +23,10 @@
     ['write', 'writeln'].forEach(method => {
       const originalWrite = document[method];
       document[method] = function () {
+        if (blockDocumentWrite) {
+          N.log('BLOCK document.' + method, Array.from(arguments).join('').slice(0, 160));
+          return;
+        }
         const markup = Array.from(arguments).join('');
         const sources = Array.from(markup.matchAll(/<script\b[^>]*\bsrc\s*=\s*["']([^"']+)["']/gi), match => match[1]);
         if (sources.some(src => N.guard('script', src))) {

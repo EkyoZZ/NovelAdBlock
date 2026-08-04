@@ -1,7 +1,7 @@
 ﻿// ==UserScript==
 // @name         NovelAdBlock
 // @namespace    https://github.com/NovelAdBlock
-// @version      0.1.3
+// @version      0.1.4
 // @description  Block novel-site ad redirects, popups, injected scripts and frames.
 // @match        *://*/*
 // @run-at       document-start
@@ -23,7 +23,7 @@
 (function (root) {
   'use strict';
   const N = root.NovelAdBlock = root.NovelAdBlock || {};
-  N.version = '0.1.3';
+  N.version = '0.1.4';
   N.rules = N.rules || [];
   N.features = N.features || [];
   N.log = N.log || function () {};
@@ -62,9 +62,22 @@
       } catch (_) {}
     });
   };
+  N.clearRuleStorage = function () {
+    const patterns = N.activeRules().flatMap(rule => rule.clearSessionStoragePatterns || []);
+    if (!patterns.length) return;
+    try {
+      const keys = [];
+      for (let index = 0; index < sessionStorage.length; index += 1) keys.push(sessionStorage.key(index));
+      keys.filter(key => key && patterns.some(pattern => pattern.test(key))).forEach(key => {
+        sessionStorage.removeItem(key);
+        N.log('CLEAR sessionStorage', key);
+      });
+    } catch (_) {}
+  };
   N.install = function () {
     if (N.installed) return;
     N.installed = true;
+    N.clearRuleStorage();
     N.disableKnownGlobals();
     N.features.forEach(feature => { try { feature(N); } catch (error) { N.log('feature error', error); } });
     N.log('installed', { version: N.version, rules: N.activeRules().map(rule => rule.id) });
@@ -90,9 +103,10 @@
     disableGlobals: ['bicaaa0', 'bicaaa1', 'bicaaa2', 'ziitrc'],
     lockGlobalsAfterScripts: [/\/css\/js\/tools\.js(?:[?#]|$)/i],
     blockTouchTracking: true,
-    blockPageTimers: true,
+    blockDocumentWrite: true,
     blockThirdPartyScripts: true,
     allowedScriptHosts: ['libs.baidu.com', 'static.cloudflareinsights.com', 'hm.baidu.com'],
+    clearSessionStoragePatterns: [/^(?:currentPvIndex_|config_|data_|data\d+)/i],
     blockHosts: ['dkuhw.cn', '3333ai.top', 'bmjtlfhahyhhru.com'],
     blockPatterns: []
   });
@@ -121,6 +135,7 @@
   'use strict';
   root.NovelAdBlock.registerFeature(function (N) {
     const lockPatterns = N.activeRules().flatMap(rule => rule.lockGlobalsAfterScripts || []);
+    const blockDocumentWrite = N.activeRules().some(rule => rule.blockDocumentWrite);
     const shouldLockAfter = src => lockPatterns.some(pattern => pattern.test(src));
 
     if (lockPatterns.length) {
@@ -141,6 +156,10 @@
     ['write', 'writeln'].forEach(method => {
       const originalWrite = document[method];
       document[method] = function () {
+        if (blockDocumentWrite) {
+          N.log('BLOCK document.' + method, Array.from(arguments).join('').slice(0, 160));
+          return;
+        }
         const markup = Array.from(arguments).join('');
         const sources = Array.from(markup.matchAll(/<script\b[^>]*\bsrc\s*=\s*["']([^"']+)["']/gi), match => match[1]);
         if (sources.some(src => N.guard('script', src))) {

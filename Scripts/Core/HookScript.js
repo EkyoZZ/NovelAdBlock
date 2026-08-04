@@ -1,6 +1,24 @@
 ﻿(function (root) {
   'use strict';
   root.NovelAdBlock.registerFeature(function (N) {
+    const lockPatterns = N.activeRules().flatMap(rule => rule.lockGlobalsAfterScripts || []);
+    const shouldLockAfter = src => lockPatterns.some(pattern => pattern.test(src));
+
+    if (lockPatterns.length) {
+      document.addEventListener('load', event => {
+        const target = event.target;
+        if (target && target.tagName === 'SCRIPT' && target.src && shouldLockAfter(target.src)) {
+          N.lockKnownGlobals();
+          N.log('locked globals after script', target.src);
+        }
+      }, true);
+
+      try {
+        const alreadyLoaded = performance.getEntriesByType('resource').some(entry => shouldLockAfter(entry.name));
+        if (alreadyLoaded) N.lockKnownGlobals();
+      } catch (_) {}
+    }
+
     const append = Node.prototype.appendChild;
     Node.prototype.appendChild = function (node) {
       if (node && node.tagName === 'SCRIPT' && node.src && N.guard('script', node.src)) return node;

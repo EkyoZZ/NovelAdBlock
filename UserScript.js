@@ -1,7 +1,7 @@
 ﻿// ==UserScript==
 // @name         NovelAdBlock
 // @namespace    https://github.com/NovelAdBlock
-// @version      0.1.1
+// @version      0.1.2
 // @description  Block novel-site ad redirects, popups, injected scripts and frames.
 // @match        *://*/*
 // @run-at       document-start
@@ -23,7 +23,7 @@
 (function (root) {
   'use strict';
   const N = root.NovelAdBlock = root.NovelAdBlock || {};
-  N.version = '0.1.1';
+  N.version = '0.1.2';
   N.rules = N.rules || [];
   N.features = N.features || [];
   N.log = N.log || function () {};
@@ -46,6 +46,14 @@
   N.disableKnownGlobals = function () {
     N.blockedNames().forEach(name => {
       try { Object.defineProperty(root, name, { configurable: true, get: () => function () { N.log('BLOCK global', name); }, set: () => {} }); } catch (_) {}
+    });
+  };
+  N.lockKnownGlobals = function () {
+    N.blockedNames().forEach(name => {
+      try {
+        const stub = function () { N.log('BLOCK locked global', name); };
+        Object.defineProperty(root, name, { configurable: false, enumerable: true, writable: false, value: stub });
+      } catch (_) {}
     });
   };
   N.install = function () {
@@ -74,6 +82,7 @@
     id: 'tzkibb',
     hosts: ['tzkibb.com'],
     disableGlobals: ['bicaaa0', 'bicaaa1', 'bicaaa2', 'ziitrc'],
+    lockGlobalsAfterScripts: [/\/css\/js\/tools\.js(?:[?#]|$)/i],
     blockTouchTracking: true,
     blockHosts: ['dkuhw.cn', '3333ai.top', 'bmjtlfhahyhhru.com'],
     blockPatterns: []
@@ -102,6 +111,24 @@
 (function (root) {
   'use strict';
   root.NovelAdBlock.registerFeature(function (N) {
+    const lockPatterns = N.activeRules().flatMap(rule => rule.lockGlobalsAfterScripts || []);
+    const shouldLockAfter = src => lockPatterns.some(pattern => pattern.test(src));
+
+    if (lockPatterns.length) {
+      document.addEventListener('load', event => {
+        const target = event.target;
+        if (target && target.tagName === 'SCRIPT' && target.src && shouldLockAfter(target.src)) {
+          N.lockKnownGlobals();
+          N.log('locked globals after script', target.src);
+        }
+      }, true);
+
+      try {
+        const alreadyLoaded = performance.getEntriesByType('resource').some(entry => shouldLockAfter(entry.name));
+        if (alreadyLoaded) N.lockKnownGlobals();
+      } catch (_) {}
+    }
+
     const append = Node.prototype.appendChild;
     Node.prototype.appendChild = function (node) {
       if (node && node.tagName === 'SCRIPT' && node.src && N.guard('script', node.src)) return node;

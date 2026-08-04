@@ -2,7 +2,7 @@
 (function (root) {
   'use strict';
   const N = root.NovelAdBlock = root.NovelAdBlock || {};
-  N.version = '0.1.1';
+  N.version = '0.1.2';
   N.rules = N.rules || [];
   N.features = N.features || [];
   N.log = N.log || function () {};
@@ -25,6 +25,14 @@
   N.disableKnownGlobals = function () {
     N.blockedNames().forEach(name => {
       try { Object.defineProperty(root, name, { configurable: true, get: () => function () { N.log('BLOCK global', name); }, set: () => {} }); } catch (_) {}
+    });
+  };
+  N.lockKnownGlobals = function () {
+    N.blockedNames().forEach(name => {
+      try {
+        const stub = function () { N.log('BLOCK locked global', name); };
+        Object.defineProperty(root, name, { configurable: false, enumerable: true, writable: false, value: stub });
+      } catch (_) {}
     });
   };
   N.install = function () {

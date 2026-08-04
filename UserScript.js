@@ -1,7 +1,7 @@
 ﻿// ==UserScript==
 // @name         NovelAdBlock
 // @namespace    https://github.com/NovelAdBlock
-// @version      0.2.2
+// @version      0.2.3
 // @description  Block novel-site ad redirects, popups, injected scripts and frames.
 // @match        *://*/*
 // @run-at       document-start
@@ -15,6 +15,14 @@
   function installPageBootstrap(root) {
     if (root.__NovelAdBlockPageBootstrap || !/(^|\.)tzkibb\.com$/i.test(root.location.hostname)) return;
     Object.defineProperty(root, '__NovelAdBlockPageBootstrap', { configurable: false, value: true });
+
+    try {
+      const currentUrl = new URL(root.location.href);
+      if (currentUrl.searchParams.has('_novel_adblock')) {
+        currentUrl.searchParams.delete('_novel_adblock');
+        root.history.replaceState(root.history.state, root.document.title, currentUrl.href);
+      }
+    } catch (_) {}
 
     const blockedGlobals = ['bicaaa0', 'bicaaa1', 'bicaaa2', 'ziitrc'];
     blockedGlobals.forEach(name => {
@@ -71,7 +79,6 @@
 
       event.preventDefault();
       event.stopImmediatePropagation();
-      destination.searchParams.set('_novel_adblock', Date.now().toString(36));
       root.location.assign(destination.href);
     }, true);
 
@@ -122,7 +129,7 @@
 (function (root) {
   'use strict';
   const N = root.NovelAdBlock = root.NovelAdBlock || {};
-  N.version = '0.2.2';
+  N.version = '0.2.3';
   N.rules = N.rules || [];
   N.features = N.features || [];
   N.log = N.log || function () {};

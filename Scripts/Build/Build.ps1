@@ -28,7 +28,7 @@ $header = @(
     '// ==UserScript=='
     '// @name         NovelAdBlock'
     '// @namespace    https://github.com/NovelAdBlock'
-    '// @version      0.2.2'
+    '// @version      0.2.3'
     '// @description  Block novel-site ad redirects, popups, injected scripts and frames.'
     '// @match        *://*/*'
     '// @run-at       document-start'

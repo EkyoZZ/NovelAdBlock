@@ -6,6 +6,14 @@
     if (root.__NovelAdBlockPageBootstrap || !/(^|\.)tzkibb\.com$/i.test(root.location.hostname)) return;
     Object.defineProperty(root, '__NovelAdBlockPageBootstrap', { configurable: false, value: true });
 
+    try {
+      const currentUrl = new URL(root.location.href);
+      if (currentUrl.searchParams.has('_novel_adblock')) {
+        currentUrl.searchParams.delete('_novel_adblock');
+        root.history.replaceState(root.history.state, root.document.title, currentUrl.href);
+      }
+    } catch (_) {}
+
     const blockedGlobals = ['bicaaa0', 'bicaaa1', 'bicaaa2', 'ziitrc'];
     blockedGlobals.forEach(name => {
       try {
@@ -61,7 +69,6 @@
 
       event.preventDefault();
       event.stopImmediatePropagation();
-      destination.searchParams.set('_novel_adblock', Date.now().toString(36));
       root.location.assign(destination.href);
     }, true);
 

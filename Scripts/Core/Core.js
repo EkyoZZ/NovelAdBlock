@@ -2,7 +2,7 @@
 (function (root) {
   'use strict';
   const N = root.NovelAdBlock = root.NovelAdBlock || {};
-  N.version = '0.1.4';
+  N.version = '0.1.5';
   N.rules = N.rules || [];
   N.features = N.features || [];
   N.log = N.log || function () {};
@@ -57,7 +57,8 @@
     if (N.installed) return;
     N.installed = true;
     N.clearRuleStorage();
-    N.disableKnownGlobals();
+    if (N.activeRules().some(rule => rule.lockGlobalsImmediately)) N.lockKnownGlobals();
+    else N.disableKnownGlobals();
     N.features.forEach(feature => { try { feature(N); } catch (error) { N.log('feature error', error); } });
     N.log('installed', { version: N.version, rules: N.activeRules().map(rule => rule.id) });
   };

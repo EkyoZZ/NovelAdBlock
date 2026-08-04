@@ -1,7 +1,7 @@
 ﻿// ==UserScript==
 // @name         NovelAdBlock
 // @namespace    https://github.com/NovelAdBlock
-// @version      0.1.4
+// @version      0.1.5
 // @description  Block novel-site ad redirects, popups, injected scripts and frames.
 // @match        *://*/*
 // @run-at       document-start
@@ -23,7 +23,7 @@
 (function (root) {
   'use strict';
   const N = root.NovelAdBlock = root.NovelAdBlock || {};
-  N.version = '0.1.4';
+  N.version = '0.1.5';
   N.rules = N.rules || [];
   N.features = N.features || [];
   N.log = N.log || function () {};
@@ -78,7 +78,8 @@
     if (N.installed) return;
     N.installed = true;
     N.clearRuleStorage();
-    N.disableKnownGlobals();
+    if (N.activeRules().some(rule => rule.lockGlobalsImmediately)) N.lockKnownGlobals();
+    else N.disableKnownGlobals();
     N.features.forEach(feature => { try { feature(N); } catch (error) { N.log('feature error', error); } });
     N.log('installed', { version: N.version, rules: N.activeRules().map(rule => rule.id) });
   };
@@ -101,6 +102,7 @@
     id: 'tzkibb',
     hosts: ['tzkibb.com'],
     disableGlobals: ['bicaaa0', 'bicaaa1', 'bicaaa2', 'ziitrc'],
+    lockGlobalsImmediately: true,
     lockGlobalsAfterScripts: [/\/css\/js\/tools\.js(?:[?#]|$)/i],
     blockTouchTracking: true,
     blockDocumentWrite: true,

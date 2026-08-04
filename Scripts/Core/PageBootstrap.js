@@ -3,7 +3,42 @@
   'use strict';
 
   function installPageBootstrap(root) {
+    const isCloudflareChallenge = function () {
+      try {
+        return !!root._cf_chl_opt ||
+          /^Just a moment/i.test(root.document.title.trim()) ||
+          root.location.pathname.startsWith('/cdn-cgi/') ||
+          /(?:^|[?&])__cf_chl_/i.test(root.location.search) ||
+          !!root.document.querySelector('#challenge-running, #cf-challenge-running, script[src*="/cdn-cgi/challenge-platform/"], meta[http-equiv="content-security-policy"][content*="challenges.cloudflare.com"]') ||
+          (root.document.documentElement.lang === 'en-US' && !!root.document.querySelector('meta[name="robots"][content*="noindex"]'));
+      } catch (_) { return false; }
+    };
+
+    const isNovelPage = function () {
+      try {
+        return !!root.document.querySelector('script[src*="/css/js/wap.js"], script[src*="/css/js/tools.js"]');
+      } catch (_) { return false; }
+    };
+
+    if (isCloudflareChallenge()) {
+      try { Object.defineProperty(root, '__NovelAdBlockSkip', { configurable: true, value: true }); } catch (_) { root.__NovelAdBlockSkip = true; }
+      if (root.__NovelAdBlockDecisionObserver) root.__NovelAdBlockDecisionObserver.disconnect();
+      return;
+    }
+
+    if (root.document.readyState === 'loading' && !isNovelPage()) {
+      if (!root.__NovelAdBlockDecisionObserver) {
+        const observer = new MutationObserver(function () { installPageBootstrap(root); });
+        try { Object.defineProperty(root, '__NovelAdBlockDecisionObserver', { configurable: true, value: observer }); }
+        catch (_) { root.__NovelAdBlockDecisionObserver = observer; }
+        observer.observe(root.document, { childList: true, subtree: true });
+        root.document.addEventListener('DOMContentLoaded', function () { installPageBootstrap(root); }, { once: true });
+      }
+      return;
+    }
+
     if (root.__NovelAdBlockPageBootstrap || !/(^|\.)tzkibb\.com$/i.test(root.location.hostname)) return;
+    if (root.__NovelAdBlockDecisionObserver) root.__NovelAdBlockDecisionObserver.disconnect();
     Object.defineProperty(root, '__NovelAdBlockPageBootstrap', { configurable: false, value: true });
 
     try {
@@ -76,6 +111,10 @@
       event.stopImmediatePropagation();
       root.location.assign(destination.href);
     }, true);
+
+    try {
+      if (root.NovelAdBlock && !root.NovelAdBlock.installed) root.NovelAdBlock.install();
+    } catch (_) {}
 
   }
 

@@ -2,7 +2,7 @@
 (function (root) {
   'use strict';
   const N = root.NovelAdBlock = root.NovelAdBlock || {};
-  N.version = '0.2.4';
+  N.version = '0.2.7';
   N.rules = N.rules || [];
   N.features = N.features || [];
   N.log = N.log || function () {};
@@ -57,6 +57,15 @@
   };
   N.install = function () {
     if (N.installed) return;
+    if (root.__NovelAdBlockDecisionObserver && !root.__NovelAdBlockPageBootstrap && !root.__NovelAdBlockSkip) return;
+    const cloudflareChallenge = root.__NovelAdBlockSkip || root._cf_chl_opt || /^Just a moment/i.test(document.title.trim()) ||
+      location.pathname.startsWith('/cdn-cgi/') || /(?:^|[?&])__cf_chl_/i.test(location.search) ||
+      !!document.querySelector('#challenge-running, #cf-challenge-running, script[src*="/cdn-cgi/challenge-platform/"], meta[http-equiv="content-security-policy"][content*="challenges.cloudflare.com"]') ||
+      (document.documentElement.lang === 'en-US' && !!document.querySelector('meta[name="robots"][content*="noindex"]'));
+    if (cloudflareChallenge) {
+      N.log('skip Cloudflare challenge');
+      return;
+    }
     N.installed = true;
     N.clearRuleStorage();
     if (N.activeRules().some(rule => rule.lockGlobalsImmediately)) N.lockKnownGlobals();

@@ -33,11 +33,16 @@
       keys.filter(key => key && patterns.some(pattern => pattern.test(key))).forEach(key => root.sessionStorage.removeItem(key));
     } catch (_) {}
 
-    ['write', 'writeln'].forEach(method => {
-      try { Object.defineProperty(root.document, method, { configurable: false, writable: false, value: function () {} }); } catch (_) {}
-    });
-
-    const stopTouchTracking = event => event.stopImmediatePropagation();
+    const stopTouchTracking = event => {
+      const target = event.target;
+      if (target && target.tagName === 'IFRAME') {
+        try {
+          const source = new URL(target.src, root.location.href);
+          if (source.hostname === 'challenges.cloudflare.com' || source.hostname.endsWith('.challenges.cloudflare.com')) return;
+        } catch (_) {}
+      }
+      event.stopImmediatePropagation();
+    };
     ['touchstart', 'touchmove', 'touchend', 'touchcancel'].forEach(type => {
       root.addEventListener(type, stopTouchTracking, { capture: true, passive: true });
     });
@@ -72,26 +77,6 @@
       root.location.assign(destination.href);
     }, true);
 
-    const allowedFrameHosts = ['challenges.cloudflare.com'];
-    const removeThirdPartyFrame = frame => {
-      if (!frame || frame.tagName !== 'IFRAME') return;
-      let source;
-      try { source = new URL(frame.src || 'about:blank', root.location.href); } catch (_) { frame.remove(); return; }
-      if (source.protocol === 'about:' || source.origin === root.location.origin) return;
-      const allowed = allowedFrameHosts.some(host => source.hostname === host || source.hostname.endsWith('.' + host));
-      if (!allowed) frame.remove();
-    };
-
-    const scanFrames = node => {
-      if (!node || node.nodeType !== 1) return;
-      if (node.tagName === 'IFRAME') removeThirdPartyFrame(node);
-      if (node.isConnected) Array.from(node.querySelectorAll('iframe')).forEach(removeThirdPartyFrame);
-    };
-
-    new MutationObserver(records => records.forEach(record => {
-      if (record.type === 'attributes') removeThirdPartyFrame(record.target);
-      record.addedNodes.forEach(scanFrames);
-    })).observe(root.document, { childList: true, subtree: true, attributes: true, attributeFilter: ['src'] });
   }
 
   installPageBootstrap(window);

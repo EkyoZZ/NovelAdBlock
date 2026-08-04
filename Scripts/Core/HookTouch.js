@@ -8,6 +8,13 @@
     if (blockTouchTracking) {
       const loggedTypes = new Set();
       const stopTrackedTouch = function (event) {
+        const target = event.target;
+        if (target && target.tagName === 'IFRAME') {
+          try {
+            const source = new URL(target.src, location.href);
+            if (source.hostname === 'challenges.cloudflare.com' || source.hostname.endsWith('.challenges.cloudflare.com')) return;
+          } catch (_) {}
+        }
         event.stopImmediatePropagation();
         if (!loggedTypes.has(event.type)) {
           loggedTypes.add(event.type);

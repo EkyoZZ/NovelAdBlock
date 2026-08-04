@@ -1,7 +1,7 @@
 ﻿// ==UserScript==
 // @name         NovelAdBlock
 // @namespace    https://github.com/NovelAdBlock
-// @version      0.1.2
+// @version      0.1.3
 // @description  Block novel-site ad redirects, popups, injected scripts and frames.
 // @match        *://*/*
 // @run-at       document-start
@@ -23,7 +23,7 @@
 (function (root) {
   'use strict';
   const N = root.NovelAdBlock = root.NovelAdBlock || {};
-  N.version = '0.1.2';
+  N.version = '0.1.3';
   N.rules = N.rules || [];
   N.features = N.features || [];
   N.log = N.log || function () {};
@@ -36,7 +36,13 @@
     try { parsed = new URL(String(url), location.href); } catch (_) { return false; }
     if (!/^https?:$/.test(parsed.protocol)) return false;
     if (parsed.origin === location.origin) return false;
-    return N.activeRules().some(rule => (rule.blockHosts || []).some(host => parsed.hostname === host || parsed.hostname.endsWith('.' + host)) || (rule.blockPatterns || []).some(pattern => pattern.test(parsed.href)) || (kind === 'popup' && rule.blockThirdPartyPopups));
+    return N.activeRules().some(rule => {
+      const allowedScript = (rule.allowedScriptHosts || []).some(host => parsed.hostname === host || parsed.hostname.endsWith('.' + host));
+      return (rule.blockHosts || []).some(host => parsed.hostname === host || parsed.hostname.endsWith('.' + host)) ||
+        (rule.blockPatterns || []).some(pattern => pattern.test(parsed.href)) ||
+        (kind === 'popup' && rule.blockThirdPartyPopups) ||
+        (kind === 'script' && rule.blockThirdPartyScripts && !allowedScript);
+    });
   };
   N.guard = function (kind, value, fallback) {
     if (!N.isBlockedUrl(value, kind)) return false;
@@ -84,6 +90,9 @@
     disableGlobals: ['bicaaa0', 'bicaaa1', 'bicaaa2', 'ziitrc'],
     lockGlobalsAfterScripts: [/\/css\/js\/tools\.js(?:[?#]|$)/i],
     blockTouchTracking: true,
+    blockPageTimers: true,
+    blockThirdPartyScripts: true,
+    allowedScriptHosts: ['libs.baidu.com', 'static.cloudflareinsights.com', 'hm.baidu.com'],
     blockHosts: ['dkuhw.cn', '3333ai.top', 'bmjtlfhahyhhru.com'],
     blockPatterns: []
   });
@@ -129,6 +138,19 @@
       } catch (_) {}
     }
 
+    ['write', 'writeln'].forEach(method => {
+      const originalWrite = document[method];
+      document[method] = function () {
+        const markup = Array.from(arguments).join('');
+        const sources = Array.from(markup.matchAll(/<script\b[^>]*\bsrc\s*=\s*["']([^"']+)["']/gi), match => match[1]);
+        if (sources.some(src => N.guard('script', src))) {
+          N.log('BLOCK document.' + method, sources);
+          return;
+        }
+        return originalWrite.apply(this, arguments);
+      };
+    });
+
     const append = Node.prototype.appendChild;
     Node.prototype.appendChild = function (node) {
       if (node && node.tagName === 'SCRIPT' && node.src && N.guard('script', node.src)) return node;
@@ -145,9 +167,26 @@
 (function (root) {
   'use strict';
   root.NovelAdBlock.registerFeature(function (N) {
+    const blockPageTimers = N.activeRules().some(rule => rule.blockPageTimers);
+    const originalTimeout = root.setTimeout;
+    const originalInterval = root.setInterval;
+
+    if (blockPageTimers) {
+      const lastTimer = originalTimeout.call(root, function () {}, 0);
+      root.clearTimeout(lastTimer);
+      if (Number.isInteger(lastTimer) && lastTimer > 0 && lastTimer < 100000) {
+        for (let id = 1; id <= lastTimer; id += 1) {
+          root.clearTimeout(id);
+          root.clearInterval(id);
+        }
+      }
+      N.log('cleared existing page timers', lastTimer);
+    }
+
     ['setTimeout', 'setInterval'].forEach(name => {
-      const original = root[name];
+      const original = name === 'setTimeout' ? originalTimeout : originalInterval;
       root[name] = function (callback, delay) {
+        if (blockPageTimers) { N.log('BLOCK page timer', { name: name, delay: delay }); return 0; }
         if (typeof callback === 'string' && /(?:location|window\.open|document\.write|bicaaa|ziitrc)/i.test(callback)) { N.log('BLOCK ' + name, callback); return 0; }
         return original.apply(this, arguments);
       };

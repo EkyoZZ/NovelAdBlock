@@ -2,7 +2,7 @@
 (function (root) {
   'use strict';
   const N = root.NovelAdBlock = root.NovelAdBlock || {};
-  N.version = '0.1.2';
+  N.version = '0.1.3';
   N.rules = N.rules || [];
   N.features = N.features || [];
   N.log = N.log || function () {};
@@ -15,7 +15,13 @@
     try { parsed = new URL(String(url), location.href); } catch (_) { return false; }
     if (!/^https?:$/.test(parsed.protocol)) return false;
     if (parsed.origin === location.origin) return false;
-    return N.activeRules().some(rule => (rule.blockHosts || []).some(host => parsed.hostname === host || parsed.hostname.endsWith('.' + host)) || (rule.blockPatterns || []).some(pattern => pattern.test(parsed.href)) || (kind === 'popup' && rule.blockThirdPartyPopups));
+    return N.activeRules().some(rule => {
+      const allowedScript = (rule.allowedScriptHosts || []).some(host => parsed.hostname === host || parsed.hostname.endsWith('.' + host));
+      return (rule.blockHosts || []).some(host => parsed.hostname === host || parsed.hostname.endsWith('.' + host)) ||
+        (rule.blockPatterns || []).some(pattern => pattern.test(parsed.href)) ||
+        (kind === 'popup' && rule.blockThirdPartyPopups) ||
+        (kind === 'script' && rule.blockThirdPartyScripts && !allowedScript);
+    });
   };
   N.guard = function (kind, value, fallback) {
     if (!N.isBlockedUrl(value, kind)) return false;

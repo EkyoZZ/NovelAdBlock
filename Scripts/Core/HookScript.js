@@ -19,6 +19,19 @@
       } catch (_) {}
     }
 
+    ['write', 'writeln'].forEach(method => {
+      const originalWrite = document[method];
+      document[method] = function () {
+        const markup = Array.from(arguments).join('');
+        const sources = Array.from(markup.matchAll(/<script\b[^>]*\bsrc\s*=\s*["']([^"']+)["']/gi), match => match[1]);
+        if (sources.some(src => N.guard('script', src))) {
+          N.log('BLOCK document.' + method, sources);
+          return;
+        }
+        return originalWrite.apply(this, arguments);
+      };
+    });
+
     const append = Node.prototype.appendChild;
     Node.prototype.appendChild = function (node) {
       if (node && node.tagName === 'SCRIPT' && node.src && N.guard('script', node.src)) return node;

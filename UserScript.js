@@ -1,7 +1,7 @@
 ﻿// ==UserScript==
 // @name         NovelAdBlock
 // @namespace    https://github.com/NovelAdBlock
-// @version      0.1.0
+// @version      0.1.1
 // @description  Block novel-site ad redirects, popups, injected scripts and frames.
 // @match        *://*/*
 // @run-at       document-start
@@ -23,7 +23,7 @@
 (function (root) {
   'use strict';
   const N = root.NovelAdBlock = root.NovelAdBlock || {};
-  N.version = '0.1.0';
+  N.version = '0.1.1';
   N.rules = N.rules || [];
   N.features = N.features || [];
   N.log = N.log || function () {};
@@ -62,7 +62,7 @@
 })(window);
 
 (function (root) {
-  root.NovelAdBlock.registerRule({ id: 'bicaaa-sdk', hosts: null, disableGlobals: ['bicaaa1', 'bicaaa2', 'ziitrc'], blockHosts: [], blockPatterns: [/bicaaa|ziitrc/i] });
+  root.NovelAdBlock.registerRule({ id: 'bicaaa-sdk', hosts: null, disableGlobals: ['bicaaa0', 'bicaaa1', 'bicaaa2', 'ziitrc'], blockHosts: [], blockPatterns: [/bicaaa|ziitrc/i] });
 })(window);
 
 (function (root) {
@@ -70,7 +70,14 @@
 })(window);
 
 (function (root) {
-  root.NovelAdBlock.registerRule({ id: 'tzkibb', hosts: ['tzkibb.com'], disableGlobals: ['bicaaa1', 'bicaaa2', 'ziitrc'], blockHosts: ['dkuhw.cn'], blockPatterns: [] });
+  root.NovelAdBlock.registerRule({
+    id: 'tzkibb',
+    hosts: ['tzkibb.com'],
+    disableGlobals: ['bicaaa0', 'bicaaa1', 'bicaaa2', 'ziitrc'],
+    blockTouchTracking: true,
+    blockHosts: ['dkuhw.cn', '3333ai.top', 'bmjtlfhahyhhru.com'],
+    blockPatterns: []
+  });
 })(window);
 
 (function (root) {
@@ -157,8 +164,31 @@
   'use strict';
   root.NovelAdBlock.registerFeature(function (N) {
     const original = EventTarget.prototype.addEventListener;
+    const touchTypes = new Set(['touchstart', 'touchmove', 'touchend', 'touchcancel']);
+    const blockTouchTracking = N.activeRules().some(rule => rule.blockTouchTracking);
+
+    if (blockTouchTracking) {
+      const loggedTypes = new Set();
+      const stopTrackedTouch = function (event) {
+        event.stopImmediatePropagation();
+        if (!loggedTypes.has(event.type)) {
+          loggedTypes.add(event.type);
+          N.log('BLOCK propagated touch event', event.type);
+        }
+      };
+
+      touchTypes.forEach(type => {
+        original.call(root, type, stopTrackedTouch, { capture: true, passive: true });
+      });
+    }
+
     EventTarget.prototype.addEventListener = function (type, listener, options) {
-      if (/^touch(?:start|move|end)$/.test(type) && typeof listener === 'function') {
+      if (touchTypes.has(type) && blockTouchTracking && (this === document || this === root)) {
+        N.log('BLOCK page touch listener', type);
+        return;
+      }
+
+      if (touchTypes.has(type) && typeof listener === 'function') {
         const text = Function.prototype.toString.call(listener);
         if (/(?:bicaaa|ziitrc|location\.href|window\.open)/i.test(text)) { N.log('BLOCK touch listener', type); return; }
       }

@@ -8,6 +8,7 @@ $repositoryRoot = Split-Path -Parent $scriptsDirectory
 $outputPath = Join-Path $repositoryRoot 'UserScript.js'
 
 $sourceFiles = @(
+    'Core\PageBootstrap.js'
     'Core\Analyzer.js'
     'Core\Core.js'
     'Rules\Generic.js'
@@ -27,7 +28,7 @@ $header = @(
     '// ==UserScript=='
     '// @name         NovelAdBlock'
     '// @namespace    https://github.com/NovelAdBlock'
-    '// @version      0.1.5'
+    '// @version      0.2.0'
     '// @description  Block novel-site ad redirects, popups, injected scripts and frames.'
     '// @match        *://*/*'
     '// @run-at       document-start'

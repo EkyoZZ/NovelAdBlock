@@ -32,6 +32,7 @@ NovelAdBlock/
 ├── README.md
 └── Scripts/
     ├── Core/
+    │   ├── PageBootstrap.js
     │   ├── Analyzer.js
     │   ├── Core.js
     │   ├── HookEval.js
@@ -126,6 +127,7 @@ NovelAdBlock/
 ├── README.md
 └── Scripts/
     ├── Core/
+    │   ├── PageBootstrap.js
     │   ├── Analyzer.js
     │   ├── Core.js
     │   ├── HookEval.js

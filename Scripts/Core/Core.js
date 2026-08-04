@@ -2,7 +2,7 @@
 (function (root) {
   'use strict';
   const N = root.NovelAdBlock = root.NovelAdBlock || {};
-  N.version = '0.1.5';
+  N.version = '0.2.0';
   N.rules = N.rules || [];
   N.features = N.features || [];
   N.log = N.log || function () {};
